@@ -4,7 +4,6 @@
 #include <pthread.h>
 #include <semaphore.h>
 
-
 typedef struct _rwlock{
     sem_t lock;      //binary semaphore (basic lock)
     sem_t writelock; //used to allow one writer or many readers
@@ -41,7 +40,9 @@ void rwlock_release_writelock(rwlock_t *rw){
     sem_post(&rw->writelock);
 }
 
-void reading_writing(){ //to simulate reading/writing just waste some time
+//This function wastes time to simulate reading/writing
+//The void* return and argument are necessary to conform to pthread_create()
+void wasteTime(){
     int x = 0, i, j, T;
     T = rand()%10000;
     for(i = 0; i < T; i++){
@@ -51,29 +52,69 @@ void reading_writing(){ //to simulate reading/writing just waste some time
     }
 }
 
+//global variables
+rwlock_t lock;
+int value = 0; //variable to track the value being read and written
+
+void *reader(void *arg) {
+    int i;
+	rwlock_acquire_readlock(&lock);
+    wasteTime();
+	printf("Finished reading value: %d\n", value);
+	rwlock_release_readlock(&lock);
+    return NULL;
+}
+
+void *writer(void *arg) {
+    int i;
+	rwlock_acquire_writelock(&lock);
+	value++; //value gets "written" only by a writing thread
+    wasteTime();
+	printf("Finished writing value: %d\n", value);
+	rwlock_release_writelock(&lock);
+    return NULL;
+}
+
 int main(){
+    printf("********** Readers Writers Simulation **********\n");
+    
+    int num_threads = 10;
     int bufferLength = 32;
     char buffer[bufferLength];
-    FILE* myFile = fopen("scenarios.txt ","r");
-    if(ptr = NULL){
-        printf("failed to open file\n");
-        return 0;
-    }
 
-    while(fgets(buffer, bufferLength, myFile)){
-        /*
+    FILE* myFile;
+    if((myFile = fopen("scenarios.txt", "r")) == NULL){
+        printf("error opening file");
+    }
+        
+    //get input from file line by line - each line being a test case
+    while(fgets(buffer, bufferLength, myFile) != NULL){
+        value = 0; //set global read/write tracking variables back to 0
+        printf("Current Test Case: %s\n", buffer);
+
+        pthread_t threads[num_threads];
+        rwlock_init(&lock);
         int i = 0;
-        char rw = buffer[i];
-        while(rw != '\n'){
-            if(rw == 'r')
-            //do something
+        char rw = buffer[0];
 
-            else
-            //do something else
+        //for each character in the line, create a reading thread or a writing thread
+        while(rw != '\n'){
+            rw = buffer[i];
+            if(rw == 'r'){
+                pthread_create(&threads[i], NULL, reader, NULL);
+            }
+            else if(rw == 'w'){
+                pthread_create(&threads[i], NULL, writer, NULL);
+            }
+            i++;
         }
-        */
-        printf("%s\n", buffer);
+        //before starting next test make sure all threads are finished
+        for (i = 0; i < num_threads; i++){
+	        pthread_join(threads[i], NULL);
+        }
     }
+    
 
     fclose(myFile);
+    return 0;
 }
