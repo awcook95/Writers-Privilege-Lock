@@ -1,2 +1,2 @@
 rwmain: readerwriter.c
-	gcc readerwriter.c -lpthread -lrt
+	gcc main.c -lpthread -lrt
